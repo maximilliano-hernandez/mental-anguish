@@ -5,7 +5,7 @@ from tkinter import ttk
 import json
 from functools import wraps
 from QuestionsClass import *
-import difflib
+from difflib import *
 from random import randint
 
 window = Tk()
@@ -14,13 +14,16 @@ window.minsize(width=800, height=800)
 
 data = []
 questions_list = []
+game_list = []
 count = 0
 edit = FALSE
+question_count = 0
+q_index = 0
 
 # STRINGVARS
 question_number = StringVar
 points = StringVar()
-question_text = StringVar()
+question_text_var = StringVar()
 answer_1 = StringVar()
 answer_2 = StringVar()
 answer_3 = StringVar()
@@ -82,7 +85,7 @@ correct_answer_label = Label(questions_management_body, text="Correct Answer: ")
 posfeedback_label = Label(questions_management_body, text="Positive Feedback: ")
 negfeedback_label = Label(questions_management_body, text="Negative Feedback: ")
 points_entry = Entry(questions_management_body, textvariable=points)
-question_text_entry = Entry(questions_management_body, textvariable=question_text)
+question_text_entry = Entry(questions_management_body, textvariable=question_text_var)
 answer_1_entry = Entry(questions_management_body, textvariable=answer_1)
 answer_2_entry = Entry(questions_management_body, textvariable=answer_2)
 answer_3_entry = Entry(questions_management_body, textvariable=answer_3)
@@ -158,22 +161,27 @@ search_questions_edit_btn = Button(search_questions_edit_frame, text="Edit Quest
 
 
 # GAME WIDGETS AND FRAMES
-game_frame = Frame(window)
-question_area = Frame(game_frame)
-Question_display = Entry(question_area, textvariable=question_text, state=DISABLED)
+game_frame = Frame(window, relief=GROOVE, borderwidth=1 )
+question_area = Frame(game_frame, relief=GROOVE, borderwidth=1)
+question_display = Label(question_area, textvariable=question_text_var, relief=GROOVE, borderwidth=1,
+                         font=("Helvetica",20))
 answer_area = Frame(game_frame)
 left_answers = Frame(answer_area)
-upper_left_answer = Button(left_answers, textvariable=answer_1)
-lower_left_answer = Button(left_answers, textvariable=answer_2)
+upper_left_answer = Button(left_answers, textvariable=answer_1, font=("Helvetica", 20))
+lower_left_answer = Button(left_answers, textvariable=answer_2, font=("Helvetica", 20))
 right_answers = Frame(answer_area)
-upper_right_answer = Button(left_answers, textvariable=answer_3)
-lower_right_answer = Button(left_answers, textvariable=answer_4)
-
+upper_right_answer = Button(right_answers, textvariable=answer_3, font=("Helvetica", 20))
+lower_right_answer = Button(right_answers, textvariable=answer_4, font=("Helvetica", 20))
+question_display.pack(fill=BOTH, expand=1)
 question_area.pack(side=TOP, expand=1, fill=BOTH)
-
 answer_area.pack(side=BOTTOM, expand=1, fill=BOTH)
+upper_left_answer.pack(side=TOP, expand=1, fill=BOTH)
+lower_left_answer.pack(side=BOTTOM, expand=1, fill=BOTH)
+upper_right_answer.pack(side=TOP, expand=1, fill=BOTH)
+lower_right_answer.pack(side=BOTTOM, expand=1, fill=BOTH)
 left_answers.pack(side=LEFT, expand=1, fill=BOTH)
-right_answers.pack(side=LEFT, expand=1, fill=BOTH)
+right_answers.pack(side=RIGHT, expand=1, fill=BOTH)
+
 
 
 
@@ -197,34 +205,71 @@ def new_screen(frame):
         main_menu_frame.pack_forget()
         questions_management_frame.pack_forget()
         search_questions_edit_frame.pack_forget()
+        game_frame.pack_forget()
         if frame == main_menu_frame or questions_management_frame:
             question_list_display()
         frame.pack(expand=1, fill='both', padx=10, pady=10)
     return wrapper()
 
 
-def play_game():
+def start_game():
     """Begins and plays a 1 player game of Mental Anguish"""
+    global game_list
+
     new_screen(game_frame)
-    game_list = []
     x = 0
 
     while x < 3:
-        upper = len(questions_list)
+        upper = len(questions_list)-1
         y = randint(0, upper)
         game_list.append(questions_list[y])
         x += 1
 
-    x = 0
-    while question in game_list:
-        question_text.set(game_list[question].question_text)
-        answer_1.set(game_list[question].answer_bank[0])
+    next_question()
+
+    upper_left_answer.config(command=lambda: check_answer(answer_1.get()))
+    upper_right_answer.config(command=lambda: check_answer(answer_3.get()))
+    lower_left_answer.config(command=lambda: check_answer(answer_2.get()))
+    lower_right_answer.config(command=lambda: check_answer(answer_4.get()))
 
 
+def question_counter():
+    global question_count
+
+    question_count = 0
+    print(question_count)
+    while question_count < 3:
+        print("hello")
+        yield question_count
+        print("there")
+        question_count += 1
+
+question_gen = question_counter()
+
+def next_question():
+    global question_count, q_index, question_gen
+
+    q_index = next(question_gen)
+    question_text_var.set(game_list[q_index].question_text)
+    answer_1.set(game_list[q_index].answer_bank[0])
+    answer_2.set(game_list[q_index].answer_bank[1])
+    answer_3.set(game_list[q_index].answer_bank[2])
+    answer_4.set(game_list[q_index].answer_bank[3])
+
+
+def check_answer(chosen_answer):
+    global question_count, game_list, q_index
+
+    if chosen_answer == game_list[q_index].answer:
+        print("Yay")
+    else:
+        print("Boo")
+
+    next_question()
 
 
 def populate_edit_question():
-    global question_number, points, question_text, answer_1, answer_2, answer_3, answer_4, correct_answer, \
+    global question_number, points, question_text_var, answer_1, answer_2, answer_3, answer_4, correct_answer, \
         posfeedback, negfeedback, edit_question_number
 
     try:
@@ -233,7 +278,7 @@ def populate_edit_question():
         question_to_edit = questions_list[question_index]
         # question_number.set(question_to_edit.question_number)
         points.set(question_to_edit.points)
-        question_text.set(str(question_to_edit.question_text))
+        question_text_var.set(str(question_to_edit.question_text))
         answer_1.set(question_to_edit.answer_bank[0])
         answer_2.set(question_to_edit.answer_bank[1])
         answer_3.set(question_to_edit.answer_bank[2])
@@ -251,7 +296,7 @@ def populate_edit_question():
 def reset_add_question():
     """Resets the add_question form"""
     points.set("")
-    question_text.set("")
+    question_text_var.set("")
     answer_1.set("")
     answer_2.set("")
     answer_3.set("")
@@ -316,7 +361,7 @@ def submit_question():
         correct_answer_entry, posfeedback_entry, negfeedback_entry, data, add_questions_btn, edit_questions_btn,\
         question_management_indicator_label, edit, edit_question_number
 
-    global question_text, answer_1, answer_2, answer_3, answer_4, \
+    global question_text_var, answer_1, answer_2, answer_3, answer_4, \
         correct_answer, posfeedback, negfeedback, add_question_success_text
 
     global search_questions_edit_text
@@ -340,7 +385,7 @@ def submit_question():
         add_question_success_text.set('Question Edited Successfully')
 
     points.set('')
-    question_text.set('')
+    question_text_var.set('')
     answer_1.set('')
     answer_2.set('')
     answer_3.set('')
@@ -385,7 +430,8 @@ edit_questions_btn.config(command=question_management_toggle)
 delete_questions_btn.config(command=delete_question)
 search_box_main.bind("<Key>", question_search_main)
 search_box_manage.bind("<Key>", question_search_manage)
-play_game_button.config(command=play_game)
+play_game_button.config(command=start_game)
+
 
 
 with open('question_bank_experimental.json') as file:
